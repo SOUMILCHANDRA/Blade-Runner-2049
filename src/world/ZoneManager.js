@@ -15,13 +15,21 @@ export class ZoneManager {
       { name: 'SCRAPYARD', type: 'SCRAPYARD', pos: new THREE.Vector3(-2000, 0, -2000), fogColor: 0x444400, hemiColor: 0x888800 },
       { name: 'WALLACE HQ', type: 'WALLACE_HQ', pos: new THREE.Vector3(500, 0, -500), fogColor: 0x000000, hemiColor: 0x050505 }
     ];
-    this.currentZone = this.zones[0];
+    
+    this.cityInstances = [];
+    this.currentZoneData = this.zones[0];
+    
+    this.LOAD_RADIUS = 2500;
+    this.UNLOAD_RADIUS = 3500;
+
     this.init();
   }
 
   init() {
+    // Initialize City instances but don't load them yet
     this.zones.forEach(z => {
-      new City(this.scene, z.type, z.pos);
+      const city = new City(this.scene, z.type, z.pos);
+      this.cityInstances.push({ data: z, city: city });
     });
 
     const groundGeo = new THREE.PlaneGeometry(20000, 20000);
@@ -37,24 +45,59 @@ export class ZoneManager {
   }
 
   update(playerPos) {
+    this.updateZones(playerPos);
+    this.updateAtmosphere(playerPos);
+    this.drawMinimap(playerPos);
+  }
+
+  updateZones(playerPos) {
+    this.cityInstances.forEach(item => {
+      const dist = playerPos.distanceTo(item.data.pos);
+      
+      if (dist < this.LOAD_RADIUS && !item.city.loaded) {
+        console.log(`Loading zone: ${item.data.name}`);
+        item.city.load();
+      } else if (dist > this.UNLOAD_RADIUS && item.city.loaded) {
+        console.log(`Unloading zone: ${item.data.name}`);
+        item.city.unload();
+      }
+    });
+  }
+
+  updateAtmosphere(playerPos) {
+    // Find closest zone for atmosphere settings
     let minDist = Infinity;
-    let closestZone = this.currentZone;
+    let closest = this.zones[0];
 
     this.zones.forEach(z => {
       const d = playerPos.distanceTo(z.pos);
       if (d < minDist) {
         minDist = d;
-        closestZone = z;
+        closest = z;
       }
     });
 
-    if (closestZone.name !== this.currentZone.name) {
-      this.currentZone = closestZone;
-      document.getElementById('zone-name').innerText = closestZone.name;
+    if (closest.name !== this.currentZoneData.name) {
+      this.currentZoneData = closest;
+      const zoneLabel = document.getElementById('zone-name');
+      if (zoneLabel) zoneLabel.innerText = closest.name;
     }
 
-    this.updateAtmosphere(this.currentZone);
-    this.drawMinimap(playerPos);
+    const targetFog = new THREE.Color(closest.fogColor);
+    const targetHemi = new THREE.Color(closest.hemiColor);
+
+    this.scene.fog.color.lerp(targetFog, 0.02);
+    this.renderer.setClearColor(this.scene.fog.color);
+
+    if (this.hemiLight) {
+      this.hemiLight.color.lerp(targetFog, 0.02);
+      this.hemiLight.groundColor.lerp(targetHemi, 0.02);
+    }
+
+    if (this.sky && this.sky.material.uniforms) {
+      this.sky.material.uniforms.topColor.value.lerp(targetFog, 0.01);
+      this.sky.material.uniforms.bottomColor.value.lerp(targetHemi, 0.01);
+    }
   }
 
   drawMinimap(playerPos) {
@@ -74,7 +117,7 @@ export class ZoneManager {
       ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(w, i); ctx.stroke();
     }
 
-    const scale = 0.02; // 1 unit = 0.02 pixels
+    const scale = 0.02;
     const cx = w/2;
     const cy = h/2;
 
@@ -83,13 +126,15 @@ export class ZoneManager {
       const dx = (z.pos.x - playerPos.x) * scale;
       const dz = (z.pos.z - playerPos.z) * scale;
       
-      ctx.fillStyle = z === this.currentZone ? 'rgba(0, 255, 170, 1)' : 'rgba(0, 255, 170, 0.3)';
+      const isLoaded = this.cityInstances.find(ci => ci.data.name === z.name).city.loaded;
+      
+      ctx.fillStyle = isLoaded ? 'rgba(0, 255, 170, 1)' : 'rgba(0, 255, 170, 0.3)';
       ctx.beginPath();
       ctx.arc(cx + dx, cy + dz, 3, 0, Math.PI * 2);
       ctx.fill();
     });
 
-    // Draw Player (Center)
+    // Draw Player
     ctx.fillStyle = '#fff';
     ctx.shadowBlur = 10;
     ctx.shadowColor = '#fff';
@@ -97,23 +142,5 @@ export class ZoneManager {
     ctx.arc(cx, cy, 4, 0, Math.PI * 2);
     ctx.fill();
     ctx.shadowBlur = 0;
-  }
-
-  updateAtmosphere(zone) {
-    const targetFog = new THREE.Color(zone.fogColor);
-    const targetHemi = new THREE.Color(zone.hemiColor);
-
-    this.scene.fog.color.lerp(targetFog, 0.02);
-    this.renderer.setClearColor(this.scene.fog.color);
-
-    if (this.hemiLight) {
-      this.hemiLight.color.lerp(targetFog, 0.02);
-      this.hemiLight.groundColor.lerp(targetHemi, 0.02);
-    }
-
-    if (this.sky && this.sky.material.uniforms) {
-      this.sky.material.uniforms.topColor.value.lerp(targetFog, 0.01);
-      this.sky.material.uniforms.bottomColor.value.lerp(targetHemi, 0.01);
-    }
   }
 }

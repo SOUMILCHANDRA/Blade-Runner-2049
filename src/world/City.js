@@ -5,10 +5,13 @@ export class City {
     this.scene = scene;
     this.zoneType = zoneType;
     this.position = position;
-    this.generate();
+    this.meshes = [];
+    this.loaded = false;
   }
 
-  generate() {
+  load() {
+    if (this.loaded) return;
+    
     switch (this.zoneType) {
       case 'LA_2049':
         this.generateCity(500, 150, { h: 0.7, s: 0.2 }, true);
@@ -27,6 +30,32 @@ export class City {
         this.generateWallaceHQ();
         break;
     }
+    
+    this.loaded = true;
+  }
+
+  unload() {
+    if (!this.loaded) return;
+    
+    this.meshes.forEach(m => {
+      if (m.geometry) m.geometry.dispose();
+      if (m.material) {
+        if (Array.isArray(m.material)) {
+          m.material.forEach(mat => mat.dispose());
+        } else {
+          m.material.dispose();
+        }
+      }
+      this.scene.remove(m);
+    });
+    
+    this.meshes = [];
+    this.loaded = false;
+  }
+
+  addMesh(mesh) {
+    this.meshes.push(mesh);
+    this.scene.add(mesh);
   }
 
   generateCity(count, maxH, baseHSL, addNeon) {
@@ -73,7 +102,7 @@ export class City {
 
     instancedMesh.instanceMatrix.needsUpdate = true;
     instancedMesh.instanceColor.needsUpdate = true;
-    this.scene.add(instancedMesh);
+    this.addMesh(instancedMesh);
   }
 
   generateTrashMountains() {
@@ -91,7 +120,7 @@ export class City {
         this.position.z + Math.sin(angle) * radius
       );
       mesh.castShadow = true;
-      this.scene.add(mesh);
+      this.addMesh(mesh);
     }
   }
 
@@ -120,7 +149,7 @@ export class City {
       instancedMesh.setMatrixAt(i, dummy.matrix);
     }
     instancedMesh.instanceMatrix.needsUpdate = true;
-    this.scene.add(instancedMesh);
+    this.addMesh(instancedMesh);
   }
 
   generateScrapyard() {
@@ -146,25 +175,23 @@ export class City {
       instancedMesh.setMatrixAt(i, dummy.matrix);
     }
     instancedMesh.instanceMatrix.needsUpdate = true;
-    this.scene.add(instancedMesh);
+    this.addMesh(instancedMesh);
   }
 
   generateWallaceHQ() {
-    // The Monolith
     const monolithGeo = new THREE.BoxGeometry(200, 800, 200);
     const monolithMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.1, metalness: 0.9 });
     const monolith = new THREE.Mesh(monolithGeo, monolithMat);
     monolith.position.set(this.position.x, 350, this.position.z);
     monolith.castShadow = true;
-    this.scene.add(monolith);
+    this.addMesh(monolith);
 
-    // Water feature
     const waterGeo = new THREE.PlaneGeometry(1000, 1000);
     const waterMat = new THREE.MeshStandardMaterial({ color: 0x001122, roughness: 0.1, metalness: 0.5, transparent: true, opacity: 0.5 });
     const water = new THREE.Mesh(waterGeo, waterMat);
     water.rotation.x = -Math.PI / 2;
     water.position.set(this.position.x, -49.5, this.position.z);
-    this.scene.add(water);
+    this.addMesh(water);
   }
 
   addNeonDetail(pos, w, h, d) {
@@ -178,12 +205,13 @@ export class City {
     const neonStrip = new THREE.Mesh(neonGeo, neonMat);
     neonStrip.position.copy(pos);
     neonStrip.position.y += (Math.random() - 0.5) * h;
-    this.scene.add(neonStrip);
+    this.addMesh(neonStrip);
 
     if (Math.random() > 0.8) {
       const light = new THREE.PointLight(neonMat.color, 50, 100);
       light.position.copy(neonStrip.position);
-      this.scene.add(light);
+      this.scene.add(light); // PointLights don't need geometry/material disposal the same way
+      this.meshes.push(light); 
     }
   }
 }
