@@ -110,41 +110,62 @@ export class ZoneManager {
     const ctx = canvas.getContext('2d');
     const w = canvas.width;
     const h = canvas.height;
+    const cx = w / 2;
+    const cy = h / 2;
     
-    ctx.clearRect(0, 0, w, h);
+    // Background
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, w, h);
     
-    // Grid lines
-    ctx.strokeStyle = 'rgba(0, 255, 170, 0.1)';
+    // Grid Lines (Phosphor feel)
+    ctx.strokeStyle = 'rgba(0, 255, 170, 0.15)';
     ctx.lineWidth = 1;
-    for(let i=0; i<w; i+=40) {
+    for(let i=0; i<=w; i+=40) {
       ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, h); ctx.stroke();
       ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(w, i); ctx.stroke();
     }
 
-    const scale = 0.02;
-    const cx = w/2;
-    const cy = h/2;
+    const scale = 0.02; // Map scale
 
-    // Draw Zones
+    // Draw Zones (Projected Coords)
     this.zones.forEach(z => {
       const dx = (z.pos.x - playerPos.x) * scale;
       const dz = (z.pos.z - playerPos.z) * scale;
       
-      const isLoaded = this.cityInstances.find(ci => ci.data.name === z.name).city.loaded;
-      
-      ctx.fillStyle = isLoaded ? 'rgba(0, 255, 170, 1)' : 'rgba(0, 255, 170, 0.3)';
-      ctx.beginPath();
-      ctx.arc(cx + dx, cy + dz, 3, 0, Math.PI * 2);
-      ctx.fill();
+      // Only draw if within minimap bounds
+      if (Math.abs(dx) < cx && Math.abs(dz) < cy) {
+        const isLoaded = this.cityInstances.find(ci => ci.data.name === z.name).city.loaded;
+        ctx.fillStyle = isLoaded ? '#00ffaa' : 'rgba(0, 255, 170, 0.3)';
+        ctx.shadowBlur = isLoaded ? 10 : 0;
+        ctx.shadowColor = '#00ffaa';
+        
+        ctx.beginPath();
+        ctx.arc(cx + dx, cy + dz, 4, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Label
+        if (isLoaded) {
+          ctx.font = '8px "Share Tech Mono"';
+          ctx.fillText(z.name, cx + dx + 6, cy + dz + 3);
+        }
+      }
     });
 
-    // Draw Player
-    ctx.fillStyle = '#fff';
-    ctx.shadowBlur = 10;
-    ctx.shadowColor = '#fff';
+    // Player dot (Center)
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = '#00ffff';
+    ctx.fillStyle = '#00ffff';
     ctx.beginPath();
-    ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+    ctx.arc(cx, cy, 3, 0, Math.PI * 2);
     ctx.fill();
+    
+    // Reset shadow
     ctx.shadowBlur = 0;
+
+    // Scanline effect overlay
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+    for (let i = 0; i < h; i += 2) {
+      ctx.fillRect(0, i, w, 1);
+    }
   }
 }
