@@ -10,6 +10,7 @@ import { Spinner } from './vehicle/Spinner.js';
 import { ZoneManager } from './world/ZoneManager.js';
 import { VFX } from './systems/VFX.js';
 import { Howl } from 'howler';
+import * as TWEEN from '@tweenjs/tween.js';
 
 const QUALITY_PRESETS = {
   low:    { bloom: false, shadows: false, fog: true,  particles: 500,  label: 'LOW' },
@@ -103,10 +104,11 @@ class Game {
     window.addEventListener('resize', () => this.onResize());
 
     setTimeout(() => {
-      document.getElementById('loading-screen').style.opacity = '0';
-      setTimeout(() => {
-        document.getElementById('loading-screen').style.display = 'none';
-      }, 1000);
+      const screen = document.getElementById('loading-screen');
+      if (screen) {
+        screen.style.opacity = '0';
+        setTimeout(() => { screen.style.display = 'none'; }, 1000);
+      }
     }, 4000);
   }
 
@@ -175,12 +177,8 @@ class Game {
     });
 
     window.addEventListener('mousedown', () => {
-      if (this.engineSound && !this.engineSound.playing()) {
-        this.engineSound.play();
-      }
-      if (this.zoneManager) {
-        this.zoneManager.startInitialAudio();
-      }
+      if (this.engineSound && !this.engineSound.playing()) this.engineSound.play();
+      if (this.zoneManager) this.zoneManager.startInitialAudio();
     }, { once: true });
   }
 
@@ -194,22 +192,34 @@ class Game {
   animate() {
     requestAnimationFrame(() => this.animate());
 
-    const dt = this.clock.getDelta();
+    // Core delta time with cap to prevent jumpy physics/movement
+    const dt = Math.min(this.clock.getDelta(), 0.05);
+    const time = this.clock.getElapsedTime();
 
+    // 1. Vehicle Physics & Controls
     if (this.spinner) this.spinner.update(dt);
-    if (this.vfx) this.vfx.update(this.spinner.mesh.position);
+    
+    // 2. Zone & Geometry Streaming
     if (this.zoneManager) this.zoneManager.update(this.spinner.mesh.position, dt);
     
+    // 3. Atmospheric VFX (Rain/Dust)
+    if (this.vfx) this.vfx.update(this.spinner.mesh.position);
+    
+    // 4. Environmental Sky Parallax
     if (this.sky) {
       this.sky.position.copy(this.camera.position);
     }
     
-    // Engine pitch based on speed
+    // 5. Sound Engine Logic
     if (this.engineSound && this.engineSound.playing() && this.spinner) {
       const speed = this.spinner.velocity.length();
       this.engineSound.rate(1.0 + (speed / 100));
     }
     
+    // 6. UI & Animation Updates
+    TWEEN.update(time * 1000);
+    
+    // 7. Post-processed Render
     this.composer.render();
   }
 }
