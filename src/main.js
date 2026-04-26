@@ -109,11 +109,17 @@ class Game {
     this.scene.fog = new THREE.FogExp2(0x0a0515, 0.0035);
     this.renderer.setClearColor(this.scene.fog.color);
 
+    // Boosted ambient and hemi lighting for better building visibility
     this.hemiLight = new THREE.HemisphereLight(0x0a0520, 0x050208, 0.6);
     this.scene.add(this.hemiLight);
 
     const ambientLight = new THREE.AmbientLight(0x030310, 1.5);
     this.scene.add(ambientLight);
+
+    // City center glow
+    this.cityGlow = new THREE.PointLight(0xff1155, 5, 3000);
+    this.cityGlow.position.set(0, -200, 0);
+    this.scene.add(this.cityGlow);
 
     this.initSky();
 
@@ -150,7 +156,8 @@ class Game {
     this.composer.addPass(new RenderPass(this.scene, this.camera));
     
     if (q.bloom) {
-      const bloomPass = new UnrealBloomPass(new THREE.Vector2(w, h), 0.8, 0.3, 0.85);
+      // Stronger bloom for neon "pop"
+      const bloomPass = new UnrealBloomPass(new THREE.Vector2(w, h), 1.2, 0.4, 0.85);
       this.composer.addPass(bloomPass);
     }
     
@@ -199,7 +206,6 @@ class Game {
     this.elapsed += dt;
 
     if (!this.gameActive) {
-      // Cinematic menu camera
       this.camera.position.set(Math.sin(this.elapsed * 0.08) * 160, 55 + Math.sin(this.elapsed * 0.05) * 10, Math.cos(this.elapsed * 0.08) * 160);
       this.camera.lookAt(0, 40, 0);
       this.renderer.render(this.scene, this.camera);
