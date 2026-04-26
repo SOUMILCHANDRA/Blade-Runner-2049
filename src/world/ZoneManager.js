@@ -11,7 +11,7 @@ export class ZoneManager {
     this.zones = [
       { name: 'LA 2049', type: 'LA_2049', pos: new THREE.Vector3(0, 0, 0), fogColor: 0x0a0510, hemiColor: 0x1a0a00 },
       { name: 'PROTEIN FARMS', type: 'FARMS', pos: new THREE.Vector3(-3000, 0, 0), fogColor: 0x222222, hemiColor: 0x111111 },
-      { name: 'ORANGE CITY', type: 'ORANGE_CITY', pos: new THREE.Vector3(3000, 0, 1000), fogColor: 0x442200, hemiColor: 0x884400 },
+      { name: 'ORANGE_CITY', type: 'ORANGE_CITY', pos: new THREE.Vector3(3000, 0, 1000), fogColor: 0xff8c00, hemiColor: 0xff6600, groundColor: 0x331100, fogType: 'linear' },
       { name: 'SCRAPYARD', type: 'SCRAPYARD', pos: new THREE.Vector3(-2000, 0, -2000), fogColor: 0x444400, hemiColor: 0x888800 },
       { name: 'WALLACE HQ', type: 'WALLACE_HQ', pos: new THREE.Vector3(500, 0, -500), fogColor: 0x000000, hemiColor: 0x050505 }
     ];
@@ -87,20 +87,29 @@ export class ZoneManager {
       if (zoneLabel) zoneLabel.innerText = closest.name;
     }
 
-    const targetFog = new THREE.Color(closest.fogColor);
-    const targetHemi = new THREE.Color(closest.hemiColor);
+    const zone = this.currentZoneData;
+    const targetFog = new THREE.Color(zone.fogColor);
+    const targetHemi = new THREE.Color(zone.hemiColor);
+    const targetGround = new THREE.Color(zone.groundColor || zone.hemiColor);
+
+    // Dynamic Fog Switching
+    if (zone.fogType === 'linear' && this.scene.fog.isFogExp2) {
+      this.scene.fog = new THREE.Fog(this.scene.fog.color, 200, 1200);
+    } else if (!zone.fogType && !this.scene.fog.isFogExp2) {
+      this.scene.fog = new THREE.FogExp2(this.scene.fog.color, 0.003);
+    }
 
     this.scene.fog.color.lerp(targetFog, 0.02);
     this.renderer.setClearColor(this.scene.fog.color);
 
     if (this.hemiLight) {
-      this.hemiLight.color.lerp(targetFog, 0.02);
-      this.hemiLight.groundColor.lerp(targetHemi, 0.02);
+      this.hemiLight.color.lerp(targetHemi, 0.02);
+      this.hemiLight.groundColor.lerp(targetGround, 0.02);
     }
 
     if (this.sky && this.sky.material.uniforms) {
       this.sky.material.uniforms.topColor.value.lerp(targetFog, 0.01);
-      this.sky.material.uniforms.bottomColor.value.lerp(targetHemi, 0.01);
+      this.sky.material.uniforms.bottomColor.value.lerp(targetGround, 0.01);
     }
   }
 

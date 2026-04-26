@@ -69,6 +69,17 @@ export class City {
         }
       });
     }
+
+    // Drifting dust for Orange City
+    if (this.zoneType === 'ORANGE_CITY' && this.dust) {
+      const positions = this.dust.geometry.attributes.position.array;
+      for (let i = 0; i < positions.length; i += 3) {
+        positions[i] += Math.sin(time + i) * 0.1;
+        positions[i+1] += Math.cos(time + i) * 0.05;
+        positions[i+2] += Math.sin(time + i * 0.5) * 0.1;
+      }
+      this.dust.geometry.attributes.position.needsUpdate = true;
+    }
   }
 
   addZoneAmbient(color, intensity) {
@@ -81,8 +92,28 @@ export class City {
     dirLight.position.set(100, 100, 50);
     this.addMesh(dirLight);
     
-    // Dust particles (simulated with many small lights or just rely on fog)
-    // We'll add a few large point lights for a 'smog' glow effect
+    // Dust System (5000 points)
+    const dustGeo = new THREE.BufferGeometry();
+    const dustCount = 5000;
+    const posArray = new Float32Array(dustCount * 3);
+    for (let i = 0; i < dustCount * 3; i += 3) {
+      posArray[i] = this.position.x + (Math.random() - 0.5) * 2000;
+      posArray[i+1] = (Math.random() - 0.5) * 500;
+      posArray[i+2] = this.position.z + (Math.random() - 0.5) * 2000;
+    }
+    dustGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+    
+    const dustMat = new THREE.PointsMaterial({
+      color: 0xffaa00,
+      size: 2,
+      transparent: true,
+      opacity: 0.5,
+      sizeAttenuation: true
+    });
+    
+    this.dust = new THREE.Points(dustGeo, dustMat);
+    this.addMesh(this.dust);
+    
     for(let i=0; i<5; i++) {
       const pLight = new THREE.PointLight(0xffaa00, 100, 2000);
       pLight.position.set(
