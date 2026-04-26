@@ -11,10 +11,10 @@ export class City {
   generate() {
     switch (this.zoneType) {
       case 'LA_2049':
-        this.generateCity(500, 150, 0x151515, true);
+        this.generateCity(500, 150, { h: 0.7, s: 0.2 }, true);
         break;
       case 'ORANGE_CITY':
-        this.generateCity(300, 80, 0x2a1a0a, false);
+        this.generateCity(300, 80, { h: 0.1, s: 0.8 }, false);
         this.generateTrashMountains();
         break;
       case 'FARMS':
@@ -29,36 +29,52 @@ export class City {
     }
   }
 
-  generateCity(count, maxH, color, addNeon) {
-    const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+  generateCity(count, maxH, baseHSL, addNeon) {
+    const geo = new THREE.BoxGeometry(1, 1, 1);
+    const mat = new THREE.MeshStandardMaterial({
+      color: new THREE.Color().setHSL(baseHSL.h, baseHSL.s, 0.1),
+      roughness: 0.8,
+      metalness: 0.3,
+      emissive: new THREE.Color(0x001122),
+      emissiveIntensity: 0.5
+    });
+
+    const instancedMesh = new THREE.InstancedMesh(geo, mat, count);
+    instancedMesh.castShadow = true;
+    instancedMesh.receiveShadow = true;
+
+    const dummy = new THREE.Object3D();
+
     for (let i = 0; i < count; i++) {
       const w = 10 + Math.random() * 20;
       const h = 20 + Math.random() * maxH;
       const d = 10 + Math.random() * 20;
 
-      const mesh = new THREE.Mesh(boxGeo, new THREE.MeshStandardMaterial({
-        color: color,
-        roughness: 0.2,
-        metalness: 0.5
-      }));
-      mesh.scale.set(w, h, d);
-      
       const radius = 50 + Math.random() * 800;
       const angle = Math.random() * Math.PI * 2;
-      mesh.position.set(
+      
+      dummy.position.set(
         this.position.x + Math.cos(angle) * radius,
         h / 2 - 50,
         this.position.z + Math.sin(angle) * radius
       );
+      dummy.scale.set(w, h, d);
+      dummy.updateMatrix();
+      
+      instancedMesh.setMatrixAt(i, dummy.matrix);
 
-      mesh.castShadow = true;
-      mesh.receiveShadow = true;
-      this.scene.add(mesh);
+      // Randomize color slightly per instance if needed
+      const instanceColor = new THREE.Color().setHSL(baseHSL.h, baseHSL.s, Math.random() * 0.15 + 0.05);
+      instancedMesh.setColorAt(i, instanceColor);
 
-      if (addNeon && Math.random() > 0.7) {
-        this.addNeonDetail(mesh, w, h, d);
+      // Since we need individual meshes for neon details (they aren't instanced the same way), 
+      // we'll still create small detail meshes for a few buildings.
+      if (addNeon && Math.random() > 0.8) {
+        this.addNeonDetail(dummy.position, w, h, d);
       }
     }
+
+    this.scene.add(instancedMesh);
   }
 
   generateTrashMountains() {
@@ -81,47 +97,55 @@ export class City {
   }
 
   generateFarms() {
-    const farmCount = 100;
-    const boxGeo = new THREE.BoxGeometry(1, 1, 1);
-    for (let i = 0; i < farmCount; i++) {
+    const count = 100;
+    const geo = new THREE.BoxGeometry(1, 1, 1);
+    const mat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
+    const instancedMesh = new THREE.InstancedMesh(geo, mat, count);
+    const dummy = new THREE.Object3D();
+
+    for (let i = 0; i < count; i++) {
       const w = 100 + Math.random() * 100;
       const h = 5;
       const d = 200 + Math.random() * 200;
 
-      const mesh = new THREE.Mesh(boxGeo, new THREE.MeshStandardMaterial({
-        color: 0x111111,
-        roughness: 0.9
-      }));
-      mesh.scale.set(w, h, d);
-      
       const radius = 100 + Math.random() * 1500;
       const angle = Math.random() * Math.PI * 2;
-      mesh.position.set(
+      
+      dummy.position.set(
         this.position.x + Math.cos(angle) * radius,
         h / 2 - 50,
         this.position.z + Math.sin(angle) * radius
       );
-      this.scene.add(mesh);
+      dummy.scale.set(w, h, d);
+      dummy.updateMatrix();
+      instancedMesh.setMatrixAt(i, dummy.matrix);
     }
+    this.scene.add(instancedMesh);
   }
 
   generateScrapyard() {
     const count = 1000;
-    const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+    const geo = new THREE.BoxGeometry(1, 1, 1);
+    const mat = new THREE.MeshStandardMaterial({ color: 0x333322, roughness: 1 });
+    const instancedMesh = new THREE.InstancedMesh(geo, mat, count);
+    const dummy = new THREE.Object3D();
+
     for (let i = 0; i < count; i++) {
-      const mesh = new THREE.Mesh(boxGeo, new THREE.MeshStandardMaterial({ color: 0x333322 }));
-      mesh.scale.set(2 + Math.random() * 5, 2 + Math.random() * 5, 2 + Math.random() * 5);
-      
+      const scale = 2 + Math.random() * 5;
       const radius = 50 + Math.random() * 800;
       const angle = Math.random() * Math.PI * 2;
-      mesh.position.set(
+      
+      dummy.position.set(
         this.position.x + Math.cos(angle) * radius,
         -48,
         this.position.z + Math.sin(angle) * radius
       );
-      mesh.rotation.set(Math.random(), Math.random(), Math.random());
-      this.scene.add(mesh);
+      dummy.scale.set(scale, scale, scale);
+      dummy.rotation.set(Math.random(), Math.random(), Math.random());
+      dummy.updateMatrix();
+      instancedMesh.setMatrixAt(i, dummy.matrix);
     }
+    this.scene.add(instancedMesh);
   }
 
   generateWallaceHQ() {
@@ -142,7 +166,7 @@ export class City {
     this.scene.add(water);
   }
 
-  addNeonDetail(building, w, h, d) {
+  addNeonDetail(pos, w, h, d) {
     const neonGeo = new THREE.BoxGeometry(w + 0.5, 2, d + 0.5);
     const neonMat = new THREE.MeshStandardMaterial({
       color: Math.random() > 0.5 ? 0x00f3ff : 0xff0055,
@@ -151,7 +175,7 @@ export class City {
     });
 
     const neonStrip = new THREE.Mesh(neonGeo, neonMat);
-    neonStrip.position.copy(building.position);
+    neonStrip.position.copy(pos);
     neonStrip.position.y += (Math.random() - 0.5) * h;
     this.scene.add(neonStrip);
 
