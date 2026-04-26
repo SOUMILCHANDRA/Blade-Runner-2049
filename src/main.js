@@ -144,7 +144,7 @@ class Game {
 
     if (this.spinner) this.spinner.update(dt);
     if (this.vfx) this.vfx.update(this.spinner.mesh.position);
-    if (this.zoneManager) this.zoneManager.update(this.spinner.mesh.position);
+    if (this.zoneManager) this.zoneManager.update(this.spinner.mesh.position, dt);
     
     if (this.sky) {
       this.sky.position.copy(this.camera.position);

@@ -21,6 +21,7 @@ export class ZoneManager {
     
     this.LOAD_RADIUS = 2500;
     this.UNLOAD_RADIUS = 3500;
+    this.time = 0;
 
     this.init();
   }
@@ -44,7 +45,8 @@ export class ZoneManager {
     this.scene.add(ground);
   }
 
-  update(playerPos) {
+  update(playerPos, dt) {
+    this.time += dt;
     this.updateZones(playerPos);
     this.updateAtmosphere(playerPos);
     this.drawMinimap(playerPos);
@@ -55,11 +57,13 @@ export class ZoneManager {
       const dist = playerPos.distanceTo(item.data.pos);
       
       if (dist < this.LOAD_RADIUS && !item.city.loaded) {
-        console.log(`Loading zone: ${item.data.name}`);
         item.city.load();
       } else if (dist > this.UNLOAD_RADIUS && item.city.loaded) {
-        console.log(`Unloading zone: ${item.data.name}`);
         item.city.unload();
+      }
+
+      if (item.city.loaded) {
+        item.city.update(this.time);
       }
     });
   }

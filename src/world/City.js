@@ -15,19 +15,24 @@ export class City {
     switch (this.zoneType) {
       case 'LA_2049':
         this.generateCity(500, 150, { h: 0.7, s: 0.2 }, true);
+        this.addZoneAmbient(0x0a0510, 0.5);
         break;
       case 'ORANGE_CITY':
         this.generateCity(300, 80, { h: 0.1, s: 0.8 }, false);
         this.generateTrashMountains();
+        this.addOrangeLighting();
         break;
       case 'FARMS':
         this.generateFarms();
+        this.addZoneAmbient(0x111111, 0.2);
         break;
       case 'SCRAPYARD':
         this.generateScrapyard();
+        this.addScrapyardLighting();
         break;
       case 'WALLACE_HQ':
         this.generateWallaceHQ();
+        this.addWallaceLighting();
         break;
     }
     
@@ -51,6 +56,65 @@ export class City {
     
     this.meshes = [];
     this.loaded = false;
+  }
+
+  update(time) {
+    if (!this.loaded) return;
+
+    // Flickering logic for Scrapyard
+    if (this.zoneType === 'SCRAPYARD') {
+      this.meshes.forEach(m => {
+        if (m.isPointLight && Math.random() < 0.01) {
+          m.visible = !m.visible;
+        }
+      });
+    }
+  }
+
+  addZoneAmbient(color, intensity) {
+    const light = new THREE.AmbientLight(color, intensity);
+    this.addMesh(light);
+  }
+
+  addOrangeLighting() {
+    const dirLight = new THREE.DirectionalLight(0xffaa00, 2);
+    dirLight.position.set(100, 100, 50);
+    this.addMesh(dirLight);
+    
+    // Dust particles (simulated with many small lights or just rely on fog)
+    // We'll add a few large point lights for a 'smog' glow effect
+    for(let i=0; i<5; i++) {
+      const pLight = new THREE.PointLight(0xffaa00, 100, 2000);
+      pLight.position.set(
+        this.position.x + (Math.random()-0.5) * 1000,
+        500,
+        this.position.z + (Math.random()-0.5) * 1000
+      );
+      this.addMesh(pLight);
+    }
+  }
+
+  addScrapyardLighting() {
+    for (let i = 0; i < 50; i++) {
+      const pLight = new THREE.PointLight(0xccff00, 50, 300);
+      const radius = 100 + Math.random() * 800;
+      const angle = Math.random() * Math.PI * 2;
+      pLight.position.set(
+        this.position.x + Math.cos(angle) * radius,
+        -40 + Math.random() * 20,
+        this.position.z + Math.sin(angle) * radius
+      );
+      pLight.isPointLight = true; // For flickering check
+      this.addMesh(pLight);
+    }
+  }
+
+  addWallaceLighting() {
+    const spot = new THREE.SpotLight(0xffffff, 10, 2000, Math.PI / 8, 0.5);
+    spot.position.set(this.position.x, 1000, this.position.z);
+    spot.target.position.set(this.position.x, 0, this.position.z);
+    this.scene.add(spot.target); // Need to track target too? Target is just an Object3D
+    this.addMesh(spot);
   }
 
   addMesh(mesh) {
