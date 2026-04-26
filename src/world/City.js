@@ -63,17 +63,16 @@ export class City {
       
       instancedMesh.setMatrixAt(i, dummy.matrix);
 
-      // Randomize color slightly per instance if needed
       const instanceColor = new THREE.Color().setHSL(baseHSL.h, baseHSL.s, Math.random() * 0.15 + 0.05);
       instancedMesh.setColorAt(i, instanceColor);
 
-      // Since we need individual meshes for neon details (they aren't instanced the same way), 
-      // we'll still create small detail meshes for a few buildings.
       if (addNeon && Math.random() > 0.8) {
         this.addNeonDetail(dummy.position, w, h, d);
       }
     }
 
+    instancedMesh.instanceMatrix.needsUpdate = true;
+    instancedMesh.instanceColor.needsUpdate = true;
     this.scene.add(instancedMesh);
   }
 
@@ -120,6 +119,7 @@ export class City {
       dummy.updateMatrix();
       instancedMesh.setMatrixAt(i, dummy.matrix);
     }
+    instancedMesh.instanceMatrix.needsUpdate = true;
     this.scene.add(instancedMesh);
   }
 
@@ -145,6 +145,7 @@ export class City {
       dummy.updateMatrix();
       instancedMesh.setMatrixAt(i, dummy.matrix);
     }
+    instancedMesh.instanceMatrix.needsUpdate = true;
     this.scene.add(instancedMesh);
   }
 
