@@ -64,7 +64,11 @@ export class ZoneManager {
     });
 
     const groundGeo = new THREE.PlaneGeometry(20000, 20000);
-    const groundMat = new THREE.MeshStandardMaterial({ color: 0x020202, roughness: 0.9 });
+    const groundMat = new THREE.MeshStandardMaterial({ 
+      color: 0x050508, 
+      roughness: 0.1, 
+      metalness: 0.8 
+    });
     const ground = new THREE.Mesh(groundGeo, groundMat);
     ground.rotation.x = -Math.PI / 2;
     ground.position.y = -50;
