@@ -3,6 +3,9 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { FilmPass } from 'three/examples/jsm/postprocessing/FilmPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
+import { RGBShiftShader } from 'three/examples/jsm/shaders/RGBShiftShader.js';
 import { Spinner } from './vehicle/Spinner.js';
 import { ZoneManager } from './world/ZoneManager.js';
 import { VFX } from './systems/VFX.js';
@@ -54,16 +57,7 @@ class Game {
     this.initAudio();
 
     // Post-processing
-    this.composer = new EffectComposer(this.renderer);
-    this.composer.addPass(new RenderPass(this.scene, this.camera));
-
-    const bloomPass = new UnrealBloomPass(
-      new THREE.Vector2(window.innerWidth, window.innerHeight),
-      0.8, // Strength
-      0.3, // Radius
-      0.85 // Threshold
-    );
-    this.composer.addPass(bloomPass);
+    this.initPostProcessing();
 
     // Start loop
     this.animate();
@@ -78,6 +72,29 @@ class Game {
         document.getElementById('loading-screen').style.display = 'none';
       }, 1000);
     }, 3000);
+  }
+
+  initPostProcessing() {
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    
+    this.composer = new EffectComposer(this.renderer);
+    
+    // 1. Render Pass
+    this.composer.addPass(new RenderPass(this.scene, this.camera));
+    
+    // 2. Bloom Pass (Neon Glow)
+    const bloomPass = new UnrealBloomPass(new THREE.Vector2(w, h), 0.8, 0.3, 0.85);
+    this.composer.addPass(bloomPass);
+    
+    // 3. Film Pass (Subtle scanline grain)
+    const filmPass = new FilmPass(0.15, 0.025, 648, false);
+    this.composer.addPass(filmPass);
+    
+    // 4. Chromatic Aberration (Lens Fringing)
+    this.chromaticAberration = new ShaderPass(RGBShiftShader);
+    this.chromaticAberration.uniforms['amount'].value = 0.0015;
+    this.composer.addPass(this.chromaticAberration);
   }
 
   initSky() {
