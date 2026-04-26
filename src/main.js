@@ -97,7 +97,7 @@ class Game {
     this.initSky();
 
     // Systems
-    this.zoneManager = new ZoneManager(this.scene, this.renderer, this.hemiLight, this.sky);
+    this.zoneManager = new ZoneManager(this.scene, this.renderer, this.hemiLight, this.sky, this.vfx);
     this.spinner = new Spinner(this.scene, this.camera);
     this.vfx = new VFX(this.scene);
 

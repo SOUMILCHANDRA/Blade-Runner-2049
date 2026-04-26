@@ -3,52 +3,67 @@ import * as THREE from 'three';
 export class VFX {
   constructor(scene) {
     this.scene = scene;
-    this.rain = null;
-    this.rainCount = 10000;
-    this.createRain();
+    this.intensity = 1.0; // 0 to 1
+    this.initRain();
   }
 
-  createRain() {
-    const geo = new THREE.BufferGeometry();
-    const positions = new Float32Array(this.rainCount * 3);
-    const velocities = new Float32Array(this.rainCount);
-
-    for (let i = 0; i < this.rainCount; i++) {
-      positions[i * 3] = (Math.random() - 0.5) * 1000;
-      positions[i * 3 + 1] = Math.random() * 500;
-      positions[i * 3 + 2] = (Math.random() - 0.5) * 1000;
-      velocities[i] = 2 + Math.random() * 3;
+  initRain() {
+    const rainCount = 3000;
+    const rainGeo = new THREE.BufferGeometry();
+    const positions = new Float32Array(rainCount * 3);
+    
+    for (let i = 0; i < rainCount * 3; i += 3) {
+      positions[i] = (Math.random() - 0.5) * 200;
+      positions[i+1] = Math.random() * 200;
+      positions[i+2] = (Math.random() - 0.5) * 200;
     }
-
-    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-    geo.setAttribute('velocity', new THREE.BufferAttribute(velocities, 1));
-
-    const mat = new THREE.PointsMaterial({
+    
+    rainGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    
+    const rainMat = new THREE.PointsMaterial({
       color: 0xaaaaaa,
-      size: 0.1,
+      size: 0.5,
       transparent: true,
-      opacity: 0.4
+      opacity: 0.5,
+      blending: THREE.AdditiveBlending
     });
-
-    this.rain = new THREE.Points(geo, mat);
+    
+    this.rain = new THREE.Points(rainGeo, rainMat);
     this.scene.add(this.rain);
   }
 
   update(playerPos) {
-    // Keep rain centered around player
-    this.rain.position.set(playerPos.x, 0, playerPos.z);
+    if (!this.rain) return;
+
+    // Adjust visibility based on intensity
+    this.rain.visible = this.intensity > 0.01;
+    this.rain.material.opacity = this.intensity * 0.5;
 
     const positions = this.rain.geometry.attributes.position.array;
-    const velocities = this.rain.geometry.attributes.velocity.array;
+    const playerX = playerPos.x;
+    const playerY = playerPos.y;
+    const playerZ = playerPos.z;
 
-    for (let i = 0; i < this.rainCount; i++) {
-      positions[i * 3 + 1] -= velocities[i];
-      
-      if (positions[i * 3 + 1] < -100) {
-        positions[i * 3 + 1] = 500;
+    for (let i = 0; i < positions.length; i += 3) {
+      // Fall speed
+      positions[i + 1] -= 8;
+
+      // Reset to top if too low
+      if (positions[i + 1] < playerY - 100) {
+        positions[i + 1] = playerY + 100;
+        
+        // Randomize X and Z around player in a cylinder
+        const angle = Math.random() * Math.PI * 2;
+        const radius = Math.random() * 100;
+        positions[i] = playerX + Math.cos(angle) * radius;
+        positions[i + 2] = playerZ + Math.sin(angle) * radius;
       }
     }
 
     this.rain.geometry.attributes.position.needsUpdate = true;
+  }
+
+  setIntensity(val) {
+    this.intensity = val;
   }
 }
