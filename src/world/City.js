@@ -7,6 +7,13 @@ export class City {
     this.position = position;
     this.meshes = [];
     this.loaded = false;
+    this.quality = { bloom: true, shadows: true, fog: true, particles: 5000 };
+  }
+
+  setQuality(q) {
+    this.quality = q;
+    // If already loaded, we might need to recreate some things, but for simplicity
+    // we'll just let the next zone load handle it.
   }
 
   load() {
@@ -92,9 +99,9 @@ export class City {
     dirLight.position.set(100, 100, 50);
     this.addMesh(dirLight);
     
-    // Dust System (5000 points)
+    // Dust System (scaled by quality)
     const dustGeo = new THREE.BufferGeometry();
-    const dustCount = 5000;
+    const dustCount = this.quality.particles;
     const posArray = new Float32Array(dustCount * 3);
     for (let i = 0; i < dustCount * 3; i += 3) {
       posArray[i] = this.position.x + (Math.random() - 0.5) * 2000;

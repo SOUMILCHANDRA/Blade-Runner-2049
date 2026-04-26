@@ -133,6 +133,46 @@ body {
   box-shadow: 0 0 10px var(--hud-green);
 }
 
+#quality-settings {
+  margin-top: 40px;
+  pointer-events: all;
+}
+
+#quality-settings p {
+  font-size: 0.8rem;
+  letter-spacing: 2px;
+  margin-bottom: 15px;
+  color: #555;
+}
+
+.setting-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+.setting-buttons button {
+  background: transparent;
+  border: 1px solid #333;
+  color: #555;
+  padding: 8px 20px;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-size: 0.9rem;
+}
+
+.setting-buttons button:hover {
+  border-color: var(--hud-green);
+  color: var(--hud-green);
+}
+
+.setting-buttons button.active {
+  border-color: var(--hud-green);
+  color: var(--hud-green);
+  background: rgba(0, 255, 170, 0.1);
+  box-shadow: 0 0 15px rgba(0, 255, 170, 0.2);
+}
+
 /* Loading Screen */
 #loading-screen {
   position: absolute;

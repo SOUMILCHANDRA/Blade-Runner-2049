@@ -11,6 +11,12 @@ import { ZoneManager } from './world/ZoneManager.js';
 import { VFX } from './systems/VFX.js';
 import { Howl } from 'howler';
 
+const QUALITY_PRESETS = {
+  low:    { bloom: false, shadows: false, fog: true,  particles: 500,  label: 'LOW' },
+  medium: { bloom: true,  shadows: false, fog: true,  particles: 2000, label: 'MEDIUM' },
+  high:   { bloom: true,  shadows: true,  fog: true,  particles: 5000, label: 'HIGH' },
+};
+
 class Game {
   constructor() {
     this.canvas = document.getElementById('game-canvas');
@@ -22,15 +28,57 @@ class Game {
       alpha: true
     });
 
+    this.currentQuality = 'high';
     this.clock = new THREE.Clock();
+    
+    this.autoDetectQuality();
     this.init();
+    this.setupGlobals();
+  }
+
+  autoDetectQuality() {
+    const maxSize = this.renderer.capabilities.maxTextureSize;
+    if (maxSize < 8192) {
+      this.currentQuality = 'medium';
+      const msg = document.getElementById('auto-detect-msg');
+      if (msg) msg.innerText = `HARDWARE LIMIT DETECTED (${maxSize}px). AUTO-SWITCHED TO MEDIUM.`;
+    }
+    this.applyQualityButtons();
+  }
+
+  setupGlobals() {
+    window.setQuality = (q) => {
+      this.currentQuality = q;
+      this.applyQualityButtons();
+      this.initPostProcessing(); // Rebuild stack
+      this.renderer.shadowMap.enabled = QUALITY_PRESETS[q].shadows;
+      
+      // Update existing cities if they exist
+      if (this.zoneManager) {
+        this.zoneManager.cityInstances.forEach(ci => {
+          ci.city.setQuality(QUALITY_PRESETS[q]);
+        });
+      }
+    };
+  }
+
+  applyQualityButtons() {
+    const buttons = document.querySelectorAll('.setting-buttons button');
+    buttons.forEach(btn => {
+      btn.classList.remove('active');
+      if (btn.innerText.toLowerCase() === this.currentQuality) {
+        btn.classList.add('active');
+      }
+    });
   }
 
   init() {
+    const q = QUALITY_PRESETS[this.currentQuality];
+
     // Renderer setup
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.enabled = q.shadows;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 0.8;
 
@@ -71,27 +119,25 @@ class Game {
       setTimeout(() => {
         document.getElementById('loading-screen').style.display = 'none';
       }, 1000);
-    }, 3000);
+    }, 4000); // Slightly longer for selection
   }
 
   initPostProcessing() {
+    const q = QUALITY_PRESETS[this.currentQuality];
     const w = window.innerWidth;
     const h = window.innerHeight;
     
     this.composer = new EffectComposer(this.renderer);
-    
-    // 1. Render Pass
     this.composer.addPass(new RenderPass(this.scene, this.camera));
     
-    // 2. Bloom Pass (Neon Glow)
-    const bloomPass = new UnrealBloomPass(new THREE.Vector2(w, h), 0.8, 0.3, 0.85);
-    this.composer.addPass(bloomPass);
+    if (q.bloom) {
+      const bloomPass = new UnrealBloomPass(new THREE.Vector2(w, h), 0.8, 0.3, 0.85);
+      this.composer.addPass(bloomPass);
+    }
     
-    // 3. Film Pass (Subtle scanline grain)
     const filmPass = new FilmPass(0.15, 0.025, 648, false);
     this.composer.addPass(filmPass);
     
-    // 4. Chromatic Aberration (Lens Fringing)
     this.chromaticAberration = new ShaderPass(RGBShiftShader);
     this.chromaticAberration.uniforms['amount'].value = 0.0015;
     this.composer.addPass(this.chromaticAberration);

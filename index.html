@@ -33,7 +33,17 @@
         <div class="loader-content">
           <h1>BLADE RUNNER 2049</h1>
           <div class="loader-bar"></div>
-          <p>INITIALIZING SPINNER SYSTEMS...</p>
+          <p id="loading-status">INITIALIZING SPINNER SYSTEMS...</p>
+          
+          <div id="quality-settings">
+            <p>SELECT VISUAL FIDELITY</p>
+            <div class="setting-buttons">
+              <button onclick="window.setQuality('low')">LOW</button>
+              <button onclick="window.setQuality('medium')">MEDIUM</button>
+              <button onclick="window.setQuality('high')" class="active">HIGH</button>
+            </div>
+            <p id="auto-detect-msg" style="font-size: 0.7rem; margin-top: 10px; opacity: 0.6;"></p>
+          </div>
         </div>
       </div>
     </div>
