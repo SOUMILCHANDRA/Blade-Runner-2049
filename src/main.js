@@ -19,6 +19,7 @@ class Game {
       alpha: true
     });
 
+    this.clock = new THREE.Clock();
     this.init();
   }
 
@@ -115,12 +116,11 @@ class Game {
   }
 
   initAudio() {
-    // Placeholder for ambient drone
     this.ambientDrone = new Howl({
-      src: ['https://assets.mixkit.co/sfx/preview/mixkit-deep-sci-fi-drone-1632.mp3'], // Placeholder
+      src: ['https://assets.mixkit.co/sfx/preview/mixkit-deep-sci-fi-drone-1632.mp3'],
       loop: true,
       volume: 0.5,
-      autoplay: false // Browser policies require user interaction
+      autoplay: false
     });
 
     window.addEventListener('mousedown', () => {
@@ -140,7 +140,9 @@ class Game {
   animate() {
     requestAnimationFrame(() => this.animate());
 
-    if (this.spinner) this.spinner.update();
+    const dt = this.clock.getDelta();
+
+    if (this.spinner) this.spinner.update(dt);
     if (this.vfx) this.vfx.update(this.spinner.mesh.position);
     if (this.zoneManager) this.zoneManager.update(this.spinner.mesh.position);
     
