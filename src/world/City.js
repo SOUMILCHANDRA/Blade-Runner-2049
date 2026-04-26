@@ -87,6 +87,11 @@ export class City {
       }
       this.dust.geometry.attributes.position.needsUpdate = true;
     }
+
+    // Animated water for Wallace HQ
+    if (this.zoneType === 'WALLACE_HQ' && this.waterMat) {
+      this.waterMat.uniforms.time.value = time;
+    }
   }
 
   addZoneAmbient(color, intensity) {
@@ -281,19 +286,46 @@ export class City {
   }
 
   generateWallaceHQ() {
-    const monolithGeo = new THREE.BoxGeometry(200, 800, 200);
+    const monolithGeo = new THREE.BoxGeometry(200, 2000, 200);
     const monolithMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.1, metalness: 0.9 });
     const monolith = new THREE.Mesh(monolithGeo, monolithMat);
-    monolith.position.set(this.position.x, 350, this.position.z);
+    monolith.position.set(this.position.x, 950, this.position.z);
     monolith.castShadow = true;
     this.addMesh(monolith);
 
-    const waterGeo = new THREE.PlaneGeometry(1000, 1000);
-    const waterMat = new THREE.MeshStandardMaterial({ color: 0x001122, roughness: 0.1, metalness: 0.5, transparent: true, opacity: 0.5 });
-    const water = new THREE.Mesh(waterGeo, waterMat);
+    // Water with animated shader
+    const waterGeo = new THREE.PlaneGeometry(1200, 1200);
+    this.waterMat = new THREE.ShaderMaterial({
+      uniforms: {
+        time: { value: 0 },
+        color: { value: new THREE.Color(0x001122) }
+      },
+      vertexShader: `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float time;
+        uniform vec3 color;
+        varying vec2 vUv;
+        void main() {
+          float pulse = sin(vUv.y * 10.0 + time * 2.0) * 0.1;
+          float ripple = sin(vUv.x * 20.0 - time * 1.5) * 0.05;
+          gl_FragColor = vec4(color + pulse + ripple, 0.7);
+        }
+      `,
+      transparent: true
+    });
+    
+    const water = new THREE.Mesh(waterGeo, this.waterMat);
     water.rotation.x = -Math.PI / 2;
     water.position.set(this.position.x, -49.5, this.position.z);
     this.addMesh(water);
+
+    this.addWallaceLighting();
   }
 
   addNeonDetail(pos, w, h, d) {
