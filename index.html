@@ -2,50 +2,28 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Blade Runner 2049 | Flight Simulator</title>
     <meta name="description" content="A high-fidelity neon-noir flight simulator inspired by Blade Runner 2049.">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
   </head>
   <body>
     <div id="app">
       <canvas id="game-canvas"></canvas>
       
       <div id="hud">
-        <div class="hud-top">
-          <div class="status-box">
-            <span class="label">SYSTEM STATUS</span>
-            <span class="value">NOMINAL</span>
+        <div class="hud-layer">
+          <div id="zone-name">LOS ANGELES · 2049</div>
+          <div id="speed">SPD: 0</div>
+          <div id="altitude">ALT: 0m</div>
+          <div class="minimap-wrapper">
+            <canvas id="minimap" width="160" height="160"></canvas>
           </div>
-          <div class="location-box">
-            <span class="label">LOCATION</span>
-            <span class="value" id="location-name">LA 2049 - SECTOR 7</span>
-          </div>
-          <div id="minimap-container">
-            <div id="minimap-player"></div>
-            <div class="minimap-zone zone-la"></div>
-            <div class="minimap-zone zone-orange"></div>
-            <div class="minimap-zone zone-farms"></div>
-          </div>
-        </div>
-
-        <div class="hud-center">
-          <div class="reticle"></div>
-        </div>
-
-        <div class="hud-bottom">
-          <div class="speed-box">
-            <span class="label">VELOCITY</span>
-            <span class="value"><span id="speed-value">0</span> <small>KM/H</small></span>
-          </div>
-          <div class="alt-box">
-            <span class="label">ALTITUDE</span>
-            <span class="value"><span id="alt-value">120</span> <small>M</small></span>
-          </div>
-          <div class="boost-bar-container">
+          <div id="boost-container">
+            <div class="label">BOOST</div>
             <div id="boost-bar"></div>
           </div>
         </div>

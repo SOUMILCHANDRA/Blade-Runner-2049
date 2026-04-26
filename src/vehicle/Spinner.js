@@ -120,8 +120,8 @@ export class Spinner {
     // Update HUD
     const speedKmH = Math.round(this.velocity.length() * 100);
     const altM = Math.round(this.mesh.position.y + 100);
-    if (document.getElementById('speed-value')) document.getElementById('speed-value').innerText = speedKmH;
-    if (document.getElementById('alt-value')) document.getElementById('alt-value').innerText = altM;
+    if (document.getElementById('speed')) document.getElementById('speed').innerText = `SPD: ${speedKmH}`;
+    if (document.getElementById('altitude')) document.getElementById('altitude').innerText = `ALT: ${altM}m`;
     if (document.getElementById('boost-bar')) document.getElementById('boost-bar').style.width = `${this.boostAmount}%`;
   }
 }

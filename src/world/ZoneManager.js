@@ -50,19 +50,53 @@ export class ZoneManager {
 
     if (closestZone.name !== this.currentZone.name) {
       this.currentZone = closestZone;
-      document.getElementById('location-name').innerText = closestZone.name;
+      document.getElementById('zone-name').innerText = closestZone.name;
     }
 
     this.updateAtmosphere(this.currentZone);
+    this.drawMinimap(playerPos);
+  }
 
-    const mapScale = 5000 / 75;
-    const mx = playerPos.x / mapScale;
-    const mz = playerPos.z / mapScale;
+  drawMinimap(playerPos) {
+    const canvas = document.getElementById('minimap');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.width;
+    const h = canvas.height;
     
-    const playerDot = document.getElementById('minimap-player');
-    if (playerDot) {
-      playerDot.style.transform = `translate(${mx}px, ${mz}px)`;
+    ctx.clearRect(0, 0, w, h);
+    
+    // Grid lines
+    ctx.strokeStyle = 'rgba(0, 255, 170, 0.1)';
+    ctx.lineWidth = 1;
+    for(let i=0; i<w; i+=40) {
+      ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, h); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(w, i); ctx.stroke();
     }
+
+    const scale = 0.02; // 1 unit = 0.02 pixels
+    const cx = w/2;
+    const cy = h/2;
+
+    // Draw Zones
+    this.zones.forEach(z => {
+      const dx = (z.pos.x - playerPos.x) * scale;
+      const dz = (z.pos.z - playerPos.z) * scale;
+      
+      ctx.fillStyle = z === this.currentZone ? 'rgba(0, 255, 170, 1)' : 'rgba(0, 255, 170, 0.3)';
+      ctx.beginPath();
+      ctx.arc(cx + dx, cy + dz, 3, 0, Math.PI * 2);
+      ctx.fill();
+    });
+
+    // Draw Player (Center)
+    ctx.fillStyle = '#fff';
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = '#fff';
+    ctx.beginPath();
+    ctx.arc(cx, cy, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
   }
 
   updateAtmosphere(zone) {
