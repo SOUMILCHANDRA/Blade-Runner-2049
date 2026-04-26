@@ -59,8 +59,8 @@ class Game {
 
     const bloomPass = new UnrealBloomPass(
       new THREE.Vector2(window.innerWidth, window.innerHeight),
-      1.5, // Strength
-      0.4, // Radius
+      0.8, // Strength
+      0.3, // Radius
       0.85 // Threshold
     );
     this.composer.addPass(bloomPass);

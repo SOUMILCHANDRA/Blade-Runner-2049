@@ -129,7 +129,7 @@ export class City {
       roughness: 0.8,
       metalness: 0.3,
       emissive: new THREE.Color(0x001122),
-      emissiveIntensity: 0.5
+      emissiveIntensity: 2.0
     });
 
     const instancedMesh = new THREE.InstancedMesh(geo, mat, count);
@@ -263,7 +263,7 @@ export class City {
     const neonMat = new THREE.MeshStandardMaterial({
       color: Math.random() > 0.5 ? 0x00f3ff : 0xff0055,
       emissive: Math.random() > 0.5 ? 0x00f3ff : 0xff0055,
-      emissiveIntensity: 10
+      emissiveIntensity: 5.0
     });
 
     const neonStrip = new THREE.Mesh(neonGeo, neonMat);
