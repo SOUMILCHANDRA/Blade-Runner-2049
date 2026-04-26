@@ -34,17 +34,23 @@ class Game {
     this.scene.fog = new THREE.FogExp2(0x0a0510, 0.003);
     this.renderer.setClearColor(this.scene.fog.color);
 
+    // Lights
+    this.hemiLight = new THREE.HemisphereLight(0x0a0510, 0x1a0a00, 0.3);
+    this.scene.add(this.hemiLight);
+
+    const ambientLight = new THREE.AmbientLight(0x404040, 0.2);
+    this.scene.add(ambientLight);
+
+    // Procedural Sky
+    this.initSky();
+
     // Systems
-    this.zoneManager = new ZoneManager(this.scene, this.renderer);
+    this.zoneManager = new ZoneManager(this.scene, this.renderer, this.hemiLight, this.sky);
     this.spinner = new Spinner(this.scene, this.camera);
     this.vfx = new VFX(this.scene);
 
     // Audio
     this.initAudio();
-
-    // Lights
-    const ambientLight = new THREE.AmbientLight(0x404040, 0.5);
-    this.scene.add(ambientLight);
 
     // Post-processing
     this.composer = new EffectComposer(this.renderer);
@@ -71,6 +77,41 @@ class Game {
         document.getElementById('loading-screen').style.display = 'none';
       }, 1000);
     }, 3000);
+  }
+
+  initSky() {
+    const skyGeo = new THREE.SphereGeometry(2500, 32, 32);
+    const skyMat = new THREE.ShaderMaterial({
+      uniforms: {
+        topColor: { value: new THREE.Color(0x0a0510) },
+        bottomColor: { value: new THREE.Color(0x1a0a00) },
+        offset: { value: 33 },
+        exponent: { value: 0.6 }
+      },
+      vertexShader: `
+        varying vec3 vWorldPosition;
+        void main() {
+          vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+          vWorldPosition = worldPosition.xyz;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 topColor;
+        uniform vec3 bottomColor;
+        uniform float offset;
+        uniform float exponent;
+        varying vec3 vWorldPosition;
+        void main() {
+          float h = normalize(vWorldPosition + offset).y;
+          gl_FragColor = vec4(mix(bottomColor, topColor, max(pow(max(h, 0.0), exponent), 0.0)), 1.0);
+        }
+      `,
+      side: THREE.BackSide
+    });
+
+    this.sky = new THREE.Mesh(skyGeo, skyMat);
+    this.scene.add(this.sky);
   }
 
   initAudio() {
@@ -102,6 +143,10 @@ class Game {
     if (this.spinner) this.spinner.update();
     if (this.vfx) this.vfx.update(this.spinner.mesh.position);
     if (this.zoneManager) this.zoneManager.update(this.spinner.mesh.position);
+    
+    if (this.sky) {
+      this.sky.position.copy(this.camera.position);
+    }
     
     this.composer.render();
   }
