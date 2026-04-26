@@ -2,6 +2,9 @@
 
 A high-fidelity, atmospheric flight simulator built with **Three.js**, **Vite**, and **Howler.js**. Explore the dystopian landscapes of LA 2049, the Protein Farms, and the ruins of Vegas in your Spinner.
 
+<img width="1440" height="1736" alt="image" src="https://github.com/user-attachments/assets/b9a4a1e3-1e73-4147-aea0-e42424e3b904" />
+
+
 ![Blade Runner Aesthetic](https://raw.githubusercontent.com/SOUMILCHANDRA/Blade-Runner-2049/main/src/assets/hero.png)
 
 ## 🌌 Features
