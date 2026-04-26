@@ -1,60 +1,88 @@
 import * as THREE from 'three';
 
 export class City {
-  constructor(scene, zoneType = 'LA_2049') {
+  constructor(scene, zoneType = 'LA_2049', position = new THREE.Vector3(0, 0, 0)) {
     this.scene = scene;
     this.zoneType = zoneType;
-    this.buildings = [];
+    this.position = position;
     this.generate();
   }
 
   generate() {
-    if (this.zoneType === 'FARMS') {
-      this.generateFarms();
-    } else {
-      this.generateCity();
+    switch (this.zoneType) {
+      case 'LA_2049':
+        this.generateCity(500, 150, 0x151515, true);
+        break;
+      case 'ORANGE_CITY':
+        this.generateCity(300, 80, 0x2a1a0a, false);
+        this.generateTrashMountains();
+        break;
+      case 'FARMS':
+        this.generateFarms();
+        break;
+      case 'SCRAPYARD':
+        this.generateScrapyard();
+        break;
+      case 'WALLACE_HQ':
+        this.generateWallaceHQ();
+        break;
     }
   }
 
-  generateCity() {
-    const buildingCount = this.zoneType === 'LA_2049' ? 500 : 300;
+  generateCity(count, maxH, color, addNeon) {
     const boxGeo = new THREE.BoxGeometry(1, 1, 1);
-    
-    const colorBase = this.zoneType === 'LA_2049' ? 0x151515 : 0x2a1a0a; // Darker vs Rusty
-
-    for (let i = 0; i < buildingCount; i++) {
+    for (let i = 0; i < count; i++) {
       const w = 10 + Math.random() * 20;
-      const h = 20 + Math.random() * (this.zoneType === 'LA_2049' ? 150 : 80);
+      const h = 20 + Math.random() * maxH;
       const d = 10 + Math.random() * 20;
 
       const mesh = new THREE.Mesh(boxGeo, new THREE.MeshStandardMaterial({
-        color: colorBase,
+        color: color,
         roughness: 0.2,
         metalness: 0.5
       }));
       mesh.scale.set(w, h, d);
       
-      const radius = this.zoneType === 'LA_2049' ? (100 + Math.random() * 1000) : (1200 + Math.random() * 800);
+      const radius = 50 + Math.random() * 800;
       const angle = Math.random() * Math.PI * 2;
       mesh.position.set(
-        Math.cos(angle) * radius,
+        this.position.x + Math.cos(angle) * radius,
         h / 2 - 50,
-        Math.sin(angle) * radius
+        this.position.z + Math.sin(angle) * radius
       );
 
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
       this.scene.add(mesh);
 
-      if (this.zoneType === 'LA_2049' && Math.random() > 0.7) {
+      if (addNeon && Math.random() > 0.7) {
         this.addNeonDetail(mesh, w, h, d);
       }
     }
   }
 
-  generateFarms() {
-    // Large flat structures
-    const farmCount = 50;
-    const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+  generateTrashMountains() {
+    const count = 20;
+    const coneGeo = new THREE.ConeGeometry(50, 100, 8);
+    const mat = new THREE.MeshStandardMaterial({ color: 0x332211, roughness: 1 });
+    
+    for (let i = 0; i < count; i++) {
+      const mesh = new THREE.Mesh(coneGeo, mat);
+      const radius = 200 + Math.random() * 600;
+      const angle = Math.random() * Math.PI * 2;
+      mesh.position.set(
+        this.position.x + Math.cos(angle) * radius,
+        0,
+        this.position.z + Math.sin(angle) * radius
+      );
+      mesh.castShadow = true;
+      this.scene.add(mesh);
+    }
+  }
 
+  generateFarms() {
+    const farmCount = 100;
+    const boxGeo = new THREE.BoxGeometry(1, 1, 1);
     for (let i = 0; i < farmCount; i++) {
       const w = 100 + Math.random() * 100;
       const h = 5;
@@ -66,16 +94,52 @@ export class City {
       }));
       mesh.scale.set(w, h, d);
       
-      const radius = 2500 + Math.random() * 1000;
+      const radius = 100 + Math.random() * 1500;
       const angle = Math.random() * Math.PI * 2;
       mesh.position.set(
-        Math.cos(angle) * radius,
+        this.position.x + Math.cos(angle) * radius,
         h / 2 - 50,
-        Math.sin(angle) * radius
+        this.position.z + Math.sin(angle) * radius
       );
-
       this.scene.add(mesh);
     }
+  }
+
+  generateScrapyard() {
+    const count = 1000;
+    const boxGeo = new THREE.BoxGeometry(1, 1, 1);
+    for (let i = 0; i < count; i++) {
+      const mesh = new THREE.Mesh(boxGeo, new THREE.MeshStandardMaterial({ color: 0x333322 }));
+      mesh.scale.set(2 + Math.random() * 5, 2 + Math.random() * 5, 2 + Math.random() * 5);
+      
+      const radius = 50 + Math.random() * 800;
+      const angle = Math.random() * Math.PI * 2;
+      mesh.position.set(
+        this.position.x + Math.cos(angle) * radius,
+        -48,
+        this.position.z + Math.sin(angle) * radius
+      );
+      mesh.rotation.set(Math.random(), Math.random(), Math.random());
+      this.scene.add(mesh);
+    }
+  }
+
+  generateWallaceHQ() {
+    // The Monolith
+    const monolithGeo = new THREE.BoxGeometry(200, 800, 200);
+    const monolithMat = new THREE.MeshStandardMaterial({ color: 0x050505, roughness: 0.1, metalness: 0.9 });
+    const monolith = new THREE.Mesh(monolithGeo, monolithMat);
+    monolith.position.set(this.position.x, 350, this.position.z);
+    monolith.castShadow = true;
+    this.scene.add(monolith);
+
+    // Water feature
+    const waterGeo = new THREE.PlaneGeometry(1000, 1000);
+    const waterMat = new THREE.MeshStandardMaterial({ color: 0x001122, roughness: 0.1, metalness: 0.5, transparent: true, opacity: 0.5 });
+    const water = new THREE.Mesh(waterGeo, waterMat);
+    water.rotation.x = -Math.PI / 2;
+    water.position.set(this.position.x, -49.5, this.position.z);
+    this.scene.add(water);
   }
 
   addNeonDetail(building, w, h, d) {
@@ -97,6 +161,4 @@ export class City {
       this.scene.add(light);
     }
   }
-
-  update() {}
 }
