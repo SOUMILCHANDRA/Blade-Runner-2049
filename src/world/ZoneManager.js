@@ -6,7 +6,7 @@ export class ZoneManager {
     this.scene = scene;
     this.renderer = renderer;
     this.zones = [
-      { name: 'LA 2049', type: 'LA_2049', range: [0, 1500], fogColor: 0x050508 },
+      { name: 'LA 2049', type: 'LA_2049', range: [0, 1500], fogColor: 0x0a0510 },
       { name: 'ORANGE CITY', type: 'ORANGE_CITY', range: [1501, 3000], fogColor: 0x442200 },
       { name: 'PROTEIN FARMS', type: 'FARMS', range: [3001, 5000], fogColor: 0x111111 }
     ];

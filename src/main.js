@@ -12,7 +12,7 @@ class Game {
   constructor() {
     this.canvas = document.getElementById('game-canvas');
     this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+    this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 3000);
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvas,
       antialias: true,
@@ -26,11 +26,12 @@ class Game {
     // Renderer setup
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    this.renderer.toneMapping = THREE.ReinhardToneMapping;
-    this.renderer.toneMappingExposure = 1.5;
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 0.8;
 
     // Atmospheric Fog
-    this.scene.fog = new THREE.FogExp2(0x050508, 0.001);
+    this.scene.fog = new THREE.FogExp2(0x0a0510, 0.003);
     this.renderer.setClearColor(this.scene.fog.color);
 
     // Systems
