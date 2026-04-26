@@ -60,30 +60,35 @@ export class Spinner {
   }
 
   initControls() {
-    window.addEventListener('keydown', (e) => this.onKey(e.code.toLowerCase(), true));
-    window.addEventListener('keyup', (e) => this.onKey(e.code.toLowerCase(), false));
-  }
+    window.addEventListener('keydown', e => this.keys[e.code] = true);
+    window.addEventListener('keyup', e => this.keys[e.code] = false);
 
-  onKey(code, pressed) {
-    if (code === 'keyw') this.keys.w = pressed;
-    if (code === 'keys') this.keys.s = pressed;
-    if (code === 'keya') this.keys.a = pressed;
-    if (code === 'keyd') this.keys.d = pressed;
-    if (code === 'space') this.keys.space = pressed;
-    if (code === 'shiftleft') this.keys.shift = pressed;
+    const canvas = document.getElementById('game-canvas');
+    canvas.addEventListener('click', () => canvas.requestPointerLock());
+
+    document.addEventListener('mousemove', e => {
+      if (document.pointerLockElement) {
+        this.yaw -= e.movementX * 0.002;
+        this.pitch -= e.movementY * 0.002;
+        this.pitch = Math.max(-0.4, Math.min(0.4, this.pitch));
+      }
+    });
   }
 
   update(dt) {
     if (!dt) return;
     this.time += dt;
 
-    // Movement directions
+    // Apply rotation from mouse
+    this.mesh.rotation.y = this.yaw;
+    
+    // Forward direction based on current yaw
     const forward = new THREE.Vector3(0, 0, -1);
     forward.applyQuaternion(this.mesh.quaternion);
     
     // Forces from input
-    const thrust = this.keys.w ? 1 : this.keys.s ? -0.3 : 0;
-    const lift = this.keys.space ? 1 : this.keys.shift ? -1 : 0;
+    const thrust = this.keys['KeyW'] ? 1 : this.keys['KeyS'] ? -0.3 : 0;
+    const lift = this.keys['Space'] ? 1 : this.keys['ShiftLeft'] ? -1 : 0;
     
     // Apply Forces
     // Speed constant 40 as requested
@@ -99,16 +104,14 @@ export class Spinner {
     // Move Mesh
     this.mesh.position.addScaledVector(this.velocity, dt);
     
-    // Turn logic
-    if (this.keys.a) this.mesh.rotation.y += 2 * dt;
-    if (this.keys.d) this.mesh.rotation.y -= 2 * dt;
+    // Bank on turn (based on mouse movement speed)
+    const bankTarget = -this.velocity.clone().applyQuaternion(this.mesh.quaternion.clone().invert()).x * 0.05;
+    this.mesh.rotation.z = THREE.MathUtils.lerp(this.mesh.rotation.z, bankTarget, 0.1);
 
-    // Bank on turn (based on horizontal velocity in local space or just turn input)
-    // Using velocity.x relative to forward direction is complex, 
-    // let's stick to the requested logic: -this.velocity.x * 0.04
-    // But velocity is world-space. Let's convert a bit or use turn input for banking.
-    const localVelocity = this.velocity.clone().applyQuaternion(this.mesh.quaternion.clone().invert());
-    this.mesh.rotation.z = -localVelocity.x * 0.05;
+    // Apply Pitch to model
+    if (this.model) {
+      this.model.rotation.x = THREE.MathUtils.lerp(this.model.rotation.x, this.pitch, 0.1);
+    }
 
     // Camera follow logic
     const camOffset = new THREE.Vector3(0, 2, 8);
