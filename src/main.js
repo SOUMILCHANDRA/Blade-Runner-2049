@@ -50,10 +50,9 @@ class Game {
     window.setQuality = (q) => {
       this.currentQuality = q;
       this.applyQualityButtons();
-      this.initPostProcessing(); // Rebuild stack
+      this.initPostProcessing();
       this.renderer.shadowMap.enabled = QUALITY_PRESETS[q].shadows;
       
-      // Update existing cities if they exist
       if (this.zoneManager) {
         this.zoneManager.cityInstances.forEach(ci => {
           ci.city.setQuality(QUALITY_PRESETS[q]);
@@ -75,51 +74,40 @@ class Game {
   init() {
     const q = QUALITY_PRESETS[this.currentQuality];
 
-    // Renderer setup
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = q.shadows;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 0.8;
 
-    // Atmospheric Fog
     this.scene.fog = new THREE.FogExp2(0x0a0510, 0.003);
     this.renderer.setClearColor(this.scene.fog.color);
 
-    // Lights
     this.hemiLight = new THREE.HemisphereLight(0x0a0510, 0x1a0a00, 0.3);
     this.scene.add(this.hemiLight);
 
     const ambientLight = new THREE.AmbientLight(0x404040, 0.2);
     this.scene.add(ambientLight);
 
-    // Procedural Sky
     this.initSky();
 
-    // Systems
+    this.vfx = new VFX(this.scene);
     this.zoneManager = new ZoneManager(this.scene, this.renderer, this.hemiLight, this.sky, this.vfx);
     this.spinner = new Spinner(this.scene, this.camera);
-    this.vfx = new VFX(this.scene);
 
-    // Audio
     this.initAudio();
-
-    // Post-processing
     this.initPostProcessing();
 
-    // Start loop
     this.animate();
 
-    // Handle resize
     window.addEventListener('resize', () => this.onResize());
 
-    // Fade out loading screen
     setTimeout(() => {
       document.getElementById('loading-screen').style.opacity = '0';
       setTimeout(() => {
         document.getElementById('loading-screen').style.display = 'none';
       }, 1000);
-    }, 4000); // Slightly longer for selection
+    }, 4000);
   }
 
   initPostProcessing() {
@@ -179,16 +167,19 @@ class Game {
   }
 
   initAudio() {
-    this.ambientDrone = new Howl({
-      src: ['https://assets.mixkit.co/sfx/preview/mixkit-deep-sci-fi-drone-1632.mp3'],
+    this.engineSound = new Howl({
+      src: ['https://assets.mixkit.co/sfx/preview/mixkit-small-plane-engine-loop-2511.mp3'],
       loop: true,
-      volume: 0.5,
+      volume: 0.3,
       autoplay: false
     });
 
     window.addEventListener('mousedown', () => {
-      if (!this.ambientDrone.playing()) {
-        this.ambientDrone.play();
+      if (this.engineSound && !this.engineSound.playing()) {
+        this.engineSound.play();
+      }
+      if (this.zoneManager) {
+        this.zoneManager.startInitialAudio();
       }
     }, { once: true });
   }
@@ -211,6 +202,12 @@ class Game {
     
     if (this.sky) {
       this.sky.position.copy(this.camera.position);
+    }
+    
+    // Engine pitch based on speed
+    if (this.engineSound && this.engineSound.playing() && this.spinner) {
+      const speed = this.spinner.velocity.length();
+      this.engineSound.rate(1.0 + (speed / 100));
     }
     
     this.composer.render();
