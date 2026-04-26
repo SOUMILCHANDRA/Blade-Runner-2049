@@ -22,7 +22,7 @@ class Game {
   constructor() {
     this.canvas = document.getElementById('game-canvas');
     this.scene = new THREE.Scene();
-    this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 3000);
+    this.camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 6000);
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvas,
       antialias: true,
@@ -31,6 +31,8 @@ class Game {
 
     this.currentQuality = 'high';
     this.clock = new THREE.Clock();
+    this.gameActive = false;
+    this.elapsed = 0;
     
     this.autoDetectQuality();
     this.init();
@@ -60,10 +62,33 @@ class Game {
         });
       }
     };
+
+    window.startGame = () => {
+      this.gameActive = true;
+      if (this.spinner) {
+        this.spinner.mesh.position.set(0, 80, 0);
+        this.spinner.velocity.set(0, 0, 0);
+        this.spinner.yaw = 0;
+        this.spinner.pitch = 0;
+      }
+      
+      const hud = document.getElementById('hud');
+      if (hud) hud.style.display = 'block';
+
+      const ld = document.getElementById('loading');
+      if (ld) {
+        ld.style.opacity = '0';
+        setTimeout(() => ld.style.display = 'none', 1200);
+      }
+      
+      if (this.canvas.requestPointerLock) {
+        this.canvas.requestPointerLock();
+      }
+    };
   }
 
   applyQualityButtons() {
-    const buttons = document.querySelectorAll('.setting-buttons button');
+    const buttons = document.querySelectorAll('.qbtn');
     buttons.forEach(btn => {
       btn.classList.remove('active');
       if (btn.innerText.toLowerCase() === this.currentQuality) {
@@ -79,15 +104,15 @@ class Game {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.shadowMap.enabled = q.shadows;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    this.renderer.toneMappingExposure = 0.8;
+    this.renderer.toneMappingExposure = 0.85;
 
-    this.scene.fog = new THREE.FogExp2(0x0a0510, 0.003);
+    this.scene.fog = new THREE.FogExp2(0x0a0515, 0.0035);
     this.renderer.setClearColor(this.scene.fog.color);
 
-    this.hemiLight = new THREE.HemisphereLight(0x0a0510, 0x1a0a00, 0.3);
+    this.hemiLight = new THREE.HemisphereLight(0x0a0520, 0x050208, 0.6);
     this.scene.add(this.hemiLight);
 
-    const ambientLight = new THREE.AmbientLight(0x404040, 0.2);
+    const ambientLight = new THREE.AmbientLight(0x030310, 1.5);
     this.scene.add(ambientLight);
 
     this.initSky();
@@ -103,13 +128,17 @@ class Game {
 
     window.addEventListener('resize', () => this.onResize());
 
-    setTimeout(() => {
-      const screen = document.getElementById('loading-screen');
-      if (screen) {
-        screen.style.opacity = '0';
-        setTimeout(() => { screen.style.display = 'none'; }, 1000);
+    // Update loading screen text
+    const MSGS = ['INITIALIZING SPINNER SYSTEMS...', 'CALIBRATING THRUSTER ARRAY...', 'LOADING ZONE DATA...', 'SYNCING VOIGHT-KAMPFF INTERFACE...', 'READY — CLICK ENGAGE TO LAUNCH'];
+    let mi = 0;
+    const statusEl = document.getElementById('loading-status');
+    const msgTmr = setInterval(() => {
+      if (mi < MSGS.length - 1) {
+        if (statusEl) statusEl.textContent = MSGS[++mi];
+      } else {
+        clearInterval(msgTmr);
       }
-    }, 4000);
+    }, 700);
   }
 
   initPostProcessing() {
@@ -134,36 +163,8 @@ class Game {
   }
 
   initSky() {
-    const skyGeo = new THREE.SphereGeometry(2500, 32, 32);
-    const skyMat = new THREE.ShaderMaterial({
-      uniforms: {
-        topColor: { value: new THREE.Color(0x0a0510) },
-        bottomColor: { value: new THREE.Color(0x1a0a00) },
-        offset: { value: 33 },
-        exponent: { value: 0.6 }
-      },
-      vertexShader: `
-        varying vec3 vWorldPosition;
-        void main() {
-          vec4 worldPosition = modelMatrix * vec4(position, 1.0);
-          vWorldPosition = worldPosition.xyz;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-      `,
-      fragmentShader: `
-        uniform vec3 topColor;
-        uniform vec3 bottomColor;
-        uniform float offset;
-        uniform float exponent;
-        varying vec3 vWorldPosition;
-        void main() {
-          float h = normalize(vWorldPosition + offset).y;
-          gl_FragColor = vec4(mix(bottomColor, topColor, max(pow(max(h, 0.0), exponent), 0.0)), 1.0);
-        }
-      `,
-      side: THREE.BackSide
-    });
-
+    const skyGeo = new THREE.SphereGeometry(4500, 16, 16);
+    const skyMat = new THREE.MeshBasicMaterial({ color: 0x000003, side: THREE.BackSide });
     this.sky = new THREE.Mesh(skyGeo, skyMat);
     this.scene.add(this.sky);
   }
@@ -177,8 +178,10 @@ class Game {
     });
 
     window.addEventListener('mousedown', () => {
-      if (this.engineSound && !this.engineSound.playing()) this.engineSound.play();
-      if (this.zoneManager) this.zoneManager.startInitialAudio();
+      if (this.gameActive) {
+        if (this.engineSound && !this.engineSound.playing()) this.engineSound.play();
+        if (this.zoneManager) this.zoneManager.startInitialAudio();
+      }
     }, { once: true });
   }
 
@@ -192,34 +195,27 @@ class Game {
   animate() {
     requestAnimationFrame(() => this.animate());
 
-    // Core delta time with cap to prevent jumpy physics/movement
     const dt = Math.min(this.clock.getDelta(), 0.05);
-    const time = this.clock.getElapsedTime();
+    this.elapsed += dt;
 
-    // 1. Vehicle Physics & Controls
+    if (!this.gameActive) {
+      // Cinematic menu camera
+      this.camera.position.set(Math.sin(this.elapsed * 0.08) * 160, 55 + Math.sin(this.elapsed * 0.05) * 10, Math.cos(this.elapsed * 0.08) * 160);
+      this.camera.lookAt(0, 40, 0);
+      this.renderer.render(this.scene, this.camera);
+      return;
+    }
+
     if (this.spinner) this.spinner.update(dt);
-    
-    // 2. Zone & Geometry Streaming
-    if (this.zoneManager) this.zoneManager.update(this.spinner.mesh.position, dt);
-    
-    // 3. Atmospheric VFX (Rain/Dust)
+    if (this.zoneManager) this.zoneManager.update(this.spinner.mesh.position, this.spinner.yaw, dt);
     if (this.vfx) this.vfx.update(this.spinner.mesh.position);
     
-    // 4. Environmental Sky Parallax
-    if (this.sky) {
-      this.sky.position.copy(this.camera.position);
-    }
-    
-    // 5. Sound Engine Logic
     if (this.engineSound && this.engineSound.playing() && this.spinner) {
       const speed = this.spinner.velocity.length();
       this.engineSound.rate(1.0 + (speed / 100));
     }
     
-    // 6. UI & Animation Updates
-    TWEEN.update(time * 1000);
-    
-    // 7. Post-processed Render
+    TWEEN.update(this.elapsed * 1000);
     this.composer.render();
   }
 }

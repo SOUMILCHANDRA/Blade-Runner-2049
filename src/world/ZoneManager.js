@@ -12,27 +12,32 @@ export class ZoneManager {
     
     this.zones = [
       { 
-        name: 'LOS ANGELES · 2049', type: 'LA_2049', pos: new THREE.Vector3(0, 0, 0), 
+        name: 'LOS ANGELES · 2049', id: 'city', type: 'LA_2049', pos: new THREE.Vector3(0, 0, 0), 
+        sub: 'SECTOR 7 · NEON DISTRICT',
         fogColor: 0x0a0510, hemiColor: 0x1a0a00, rain: 1.0,
         ambientUrl: 'https://assets.mixkit.co/sfx/preview/mixkit-sci-fi-city-ambience-loop-1104.mp3'
       },
       { 
-        name: 'PROTEIN FARMS · CA', type: 'FARMS', pos: new THREE.Vector3(-3000, 0, 0), 
+        name: 'PROTEIN FARMS · CA', id: 'farms', type: 'FARMS', pos: new THREE.Vector3(-3000, 0, 0), 
+        sub: 'RESTRICTED AGRICULTURAL ZONE',
         fogColor: 0x222222, hemiColor: 0x111111, rain: 0.0,
         ambientUrl: 'https://assets.mixkit.co/sfx/preview/mixkit-wind-loop-1139.mp3'
       },
       { 
-        name: 'ORANGE CITY · SD', type: 'ORANGE_CITY', pos: new THREE.Vector3(3000, 0, 1000), 
+        name: 'ORANGE CITY · SD', id: 'orange', type: 'ORANGE_CITY', pos: new THREE.Vector3(3000, 0, 1000), 
+        sub: 'CONTAMINATED — ENTRY HAZARD',
         fogColor: 0xff8c00, hemiColor: 0xff6600, groundColor: 0x331100, fogType: 'linear', rain: 0.3,
         ambientUrl: 'https://assets.mixkit.co/sfx/preview/mixkit-wind-loop-1139.mp3'
       },
       { 
-        name: 'SCRAPYARD · NEVADA', type: 'SCRAPYARD', pos: new THREE.Vector3(-2000, 0, -2000), 
+        name: 'SCRAPYARD · NEVADA', id: 'scrap', type: 'SCRAPYARD', pos: new THREE.Vector3(-2000, 0, -2000), 
+        sub: 'ZONE DELTA · RADIATION WARNING',
         fogColor: 0x444400, hemiColor: 0x888800, rain: 0.0,
         ambientUrl: 'https://assets.mixkit.co/sfx/preview/mixkit-deep-sci-fi-drone-1632.mp3'
       },
       { 
-        name: 'WALLACE HQ · BR', type: 'WALLACE_HQ', pos: new THREE.Vector3(500, 0, -500), 
+        name: 'WALLACE HQ · BR', id: 'wallace', type: 'WALLACE_HQ', pos: new THREE.Vector3(500, 0, -500), 
+        sub: 'AUTHORIZED PERSONNEL ONLY',
         fogColor: 0x000000, hemiColor: 0x050505, rain: 0.0,
         ambientUrl: 'https://assets.mixkit.co/sfx/preview/mixkit-deep-sci-fi-drone-1632.mp3'
       }
@@ -41,6 +46,7 @@ export class ZoneManager {
     this.cityInstances = [];
     this.currentZoneData = this.zones[0];
     this.ambientSounds = {};
+    this.zoneCols = { city: '#00ffcc', farms: '#aaaaaa', orange: '#ff8800', scrap: '#ccff00', wallace: '#4488ff' };
     
     this.LOAD_RADIUS = 2500;
     this.UNLOAD_RADIUS = 3500;
@@ -62,24 +68,20 @@ export class ZoneManager {
       });
     });
 
-    const groundGeo = new THREE.PlaneGeometry(20000, 20000);
-    const groundMat = new THREE.MeshStandardMaterial({ 
-      color: 0x050508, 
-      roughness: 0.1, 
-      metalness: 0.8 
-    });
+    const groundGeo = new THREE.PlaneGeometry(30000, 30000);
+    const groundMat = new THREE.MeshStandardMaterial({ color: 0x040408, roughness: 0.05, metalness: 0.95 });
     const ground = new THREE.Mesh(groundGeo, groundMat);
     ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -50;
+    ground.position.y = -6;
     ground.receiveShadow = true;
     this.scene.add(ground);
   }
 
-  update(playerPos, dt) {
+  update(playerPos, playerYaw, dt) {
     this.time += dt;
     this.updateZones(playerPos);
     this.updateAtmosphere(playerPos);
-    this.drawMinimap(playerPos);
+    this.drawRadar(playerPos, playerYaw);
   }
 
   updateZones(playerPos) {
@@ -112,40 +114,37 @@ export class ZoneManager {
     if (zone.fogType === 'linear' && this.scene.fog.isFogExp2) {
       this.scene.fog = new THREE.Fog(this.scene.fog.color, 200, 1200);
     } else if (!zone.fogType && !this.scene.fog.isFogExp2) {
-      this.scene.fog = new THREE.FogExp2(this.scene.fog.color, 0.003);
+      this.scene.fog = new THREE.FogExp2(this.scene.fog.color, 0.0035);
     }
 
-    // Smooth color transition (lerp over time)
-    this.scene.fog.color.lerp(targetFog, 0.01);
+    this.scene.fog.color.lerp(targetFog, 0.025);
     this.renderer.setClearColor(this.scene.fog.color);
     if (this.hemiLight) {
-      this.hemiLight.color.lerp(targetHemi, 0.01);
-      this.hemiLight.groundColor.lerp(targetGround, 0.01);
+      this.hemiLight.color.lerp(targetHemi, 0.025);
+      this.hemiLight.groundColor.lerp(targetGround, 0.025);
     }
     if (this.sky && this.sky.material.uniforms) {
-      this.sky.material.uniforms.topColor.value.lerp(targetFog, 0.005);
-      this.sky.material.uniforms.bottomColor.value.lerp(targetGround, 0.005);
+      this.sky.material.uniforms.topColor.value.lerp(targetFog, 0.01);
+      this.sky.material.uniforms.bottomColor.value.lerp(targetGround, 0.01);
     }
     if (this.vfx) {
       const currentIntensity = this.vfx.intensity;
-      this.vfx.setIntensity(THREE.MathUtils.lerp(currentIntensity, zone.rain, 0.01));
+      this.vfx.setIntensity(THREE.MathUtils.lerp(currentIntensity, zone.rain, 0.02));
     }
   }
 
   transitionToZone(newZone) {
-    // 1. Crossfade Audio
     this.crossfadeAmbient(this.currentZoneData.name, newZone.name);
     
-    // 2. Flash Overlay
-    const flash = document.getElementById('flash-overlay');
+    const flash = document.getElementById('flash');
     if (flash) {
-      flash.classList.remove('flash-anim');
-      void flash.offsetWidth; // Trigger reflow
-      flash.classList.add('flash-anim');
+      flash.style.opacity = '0.35';
+      setTimeout(() => flash.style.opacity = '0', 180);
     }
 
-    // 3. Typewriter HUD Effect
     this.typewriteHUD(newZone.name);
+    const subLabel = document.getElementById('zone-sub');
+    if (subLabel) subLabel.textContent = newZone.sub;
 
     this.currentZoneData = newZone;
   }
@@ -153,14 +152,12 @@ export class ZoneManager {
   typewriteHUD(text) {
     const label = document.getElementById('zone-name');
     if (!label) return;
-    
-    label.innerText = '';
+    label.textContent = '';
     let i = 0;
-    const interval = setInterval(() => {
-      label.innerText += text[i];
-      i++;
-      if (i >= text.length) clearInterval(interval);
-    }, 50);
+    const iv = setInterval(() => {
+      label.textContent += text[i++];
+      if (i >= text.length) clearInterval(iv);
+    }, 45);
   }
 
   crossfadeAmbient(oldZone, newZone) {
@@ -182,30 +179,74 @@ export class ZoneManager {
     }
   }
 
-  drawMinimap(playerPos) {
+  drawRadar(playerPos, playerYaw) {
     const canvas = document.getElementById('minimap');
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    const w = canvas.width; const h = canvas.height;
-    const cx = w / 2; const cy = h / 2;
-    ctx.fillStyle = '#000'; ctx.fillRect(0, 0, w, h);
-    ctx.strokeStyle = 'rgba(0, 255, 170, 0.15)'; ctx.lineWidth = 1;
-    for(let i=0; i<=w; i+=40) { ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, h); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(w, i); ctx.stroke(); }
-    const scale = 0.02;
+    const W = 120, CX = 60, CY = 60;
+    
+    ctx.clearRect(0, 0, W, W);
+    
+    // Grid
+    ctx.strokeStyle = 'rgba(0, 180, 60, 0.12)';
+    ctx.lineWidth = 0.5;
+    for (let i = 0; i <= 4; i++) {
+      const v = (i / 4) * W;
+      ctx.beginPath(); ctx.moveTo(v, 0); ctx.lineTo(v, W); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(0, v); ctx.lineTo(W, v); ctx.stroke();
+    }
+    
+    // Rings
+    [20, 38, 58].forEach(r => {
+      ctx.strokeStyle = 'rgba(0, 180, 60, 0.18)';
+      ctx.beginPath(); ctx.arc(CX, CY, r, 0, Math.PI * 2); ctx.stroke();
+    });
+
+    const scale = 0.022;
     this.zones.forEach(z => {
       const dx = (z.pos.x - playerPos.x) * scale;
       const dz = (z.pos.z - playerPos.z) * scale;
-      if (Math.abs(dx) < cx && Math.abs(dz) < cy) {
-        const isLoaded = this.cityInstances.find(ci => ci.data.name === z.name).city.loaded;
-        ctx.fillStyle = isLoaded ? '#00ffaa' : 'rgba(0, 255, 170, 0.3)';
-        ctx.shadowBlur = isLoaded ? 10 : 0; ctx.shadowColor = '#00ffaa';
-        ctx.beginPath(); ctx.arc(cx + dx, cy + dz, 4, 0, Math.PI * 2); ctx.fill();
-        if (isLoaded) { ctx.font = '8px "Share Tech Mono"'; ctx.fillText(z.name, cx + dx + 6, cy + dz + 3); }
+      
+      // Rotate radar relative to player yaw
+      const rx = dx * Math.cos(-playerYaw) - dz * Math.sin(-playerYaw);
+      const ry = dx * Math.sin(-playerYaw) + dz * Math.cos(-playerYaw);
+      
+      const mx = CX + rx;
+      const my = CY + ry;
+      
+      if (mx < 4 || mx > 116 || my < 4 || my > 116) return;
+      
+      const active = z.name === this.currentZoneData.name;
+      const col = this.zoneCols[z.id] || '#00ff88';
+      
+      ctx.fillStyle = active ? col : col + '44';
+      if (active) {
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = col;
+      }
+      
+      ctx.beginPath();
+      ctx.arc(mx, my, active ? 4 : 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      
+      if (active) {
+        ctx.fillStyle = col;
+        ctx.font = '7px "Share Tech Mono"';
+        ctx.fillText(z.id.toUpperCase(), mx + 5, my + 3);
       }
     });
-    ctx.shadowBlur = 15; ctx.shadowColor = '#00ffff'; ctx.fillStyle = '#00ffff';
-    ctx.beginPath(); ctx.arc(cx, cy, 3, 0, Math.PI * 2); ctx.fill();
-    ctx.shadowBlur = 0; ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-    for (let i = 0; i < h; i += 2) ctx.fillRect(0, i, w, 1);
+
+    // Player Center
+    ctx.fillStyle = '#00ffff';
+    ctx.shadowBlur = 12;
+    ctx.shadowColor = '#00ffff';
+    ctx.beginPath(); ctx.arc(CX, CY, 3.5, 0, Math.PI * 2); ctx.fill();
+    ctx.shadowBlur = 0;
+    
+    // Direction Indicator
+    ctx.strokeStyle = '#00ffff88';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(CX, CY); ctx.lineTo(CX, CY - 10); ctx.stroke();
   }
 }
